@@ -1,0 +1,101 @@
+########################  
+#       
+#  Web version of the script used to construct the GCN graph using Rgraphviz
+#  
+########################  
+
+library("Rgraphviz")
+x = read.table("insert path of precision matrix here", header = TRUE, sep = "\t")
+genes = colnames(x)
+new_genes = c()
+ 
+# The purpose of this loop is to split the .exp suffix from the gene names
+for (gene in genes)
+ {
+   gene = unlist(strsplit(gene, "\\."))[1]
+   #print(gene)
+   new_genes = c(new_genes, gene)
+ }
+ nodes = new_genes
+ print(new_genes)
+
+###########################################################
+###########################################################
+
+# create the nodes and edges
+nodes = new_genes
+
+edgeList = list()
+eAttrs <- list()
+
+# setting the properties of the graph
+graph <- new("graphNEL", nodes=nodes, edgeL=edgeList, edgemode="undirected")
+defAttrs <- getDefaultAttrs()
+
+# setting the properties of the nodes
+defAttrs$node$fixedsize = TRUE
+defAttrs$node$fontsize = "18"
+defAttrs$node$shape = "ellipse"
+defAttrs$graph$size = "10,10"
+defAttrs$edge$color = "red"
+
+colnames(x) = new_genes
+rownames(x) = new_genes
+
+# Adding postitive covariance edges, threshold is 0.05
+for (row in new_genes)
+{
+  print(row)
+  for (col in new_genes)
+  {
+    if (x[row, col] > 0.05 & row != col)
+    { 
+      #check lexicographic order
+      if (row<col)
+      {
+        graph <- addEdge(row, col, graph, 1)
+        
+      }
+      else
+      {
+        graph <- addEdge(col, row, graph, 1)
+      }
+    }
+  }
+}
+
+# coloring BLUE edges for positive correlation only!
+posEdges = edgeNames(graph)
+for (edge in posEdges)
+{
+  eAttrs$color[edge] = "blue"
+}
+
+
+# RED for negative correlation only!
+defAttrs$edge$color = "red"
+
+# Adding negative covariance edges, threshold is -0.05
+for (row in new_genes)
+{
+  print(row)
+  for (col in new_genes)
+  {
+    if (x[row, col]< -0.05 & row != col)
+    {
+      if (row<col) # to check lexicographic order
+      {
+        graph <- addEdge(row, col, graph, 1)
+      }
+      else
+      {
+        graph <- addEdge(col, row, graph, 1)
+      }
+    }
+  }
+}
+
+# plot the GCN, the drawing layout can be changed from dot to any of 
+# .. neato, twopi, circo, or fdp.
+plot(graph, edgeAttrs = eAttrs, attrs = defAttrs, "dot")
+
